@@ -1,0 +1,4 @@
+github.com/MichaelS11/go-dht v0.1.0 h1:Ihf8xpZx/aprZ6A0x5rVVytLO+50unJo04SWvADwdjQ=
+github.com/MichaelS11/go-dht v0.1.0/go.mod h1:NTx2rUi8kfs8Qk9Fotoyf/3lQnKBdc2mhyZqO4AhVLI=
+periph.io/x/periph v3.6.4+incompatible h1:8FyXTbu9lcMVofz8mf+cj1pzTLN4V6EuPY2EF+DoJF4=
+periph.io/x/periph v3.6.4+incompatible/go.mod h1:EWr+FCIU2dBWz5/wSWeiIUJTriYv9v2j2ENBmgYyy7Y=
