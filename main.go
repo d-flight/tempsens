@@ -2,33 +2,44 @@ package main
 
 import (
 	"fmt"
-	"time"
-
+	tbot "tempsens/gobot"
 	"tempsens/sensor"
+
+	"gobot.io/x/gobot"
+	"gobot.io/x/gobot/drivers/gpio"
+	"gobot.io/x/gobot/platforms/raspi"
 )
 
 func main() {
-	dht1Pin := "GPIO4"
-	dht1, e := sensor.NewDHT22(dht1Pin)
+	// setup gobot
+	r := raspi.NewAdaptor()
+	dht22 := tbot.NewDHT22Driver(r, "7")
+	button := gpio.NewButtonDriver(r, "11")
 
-	if e != nil {
-		fmt.Println(e)
-		return
+	work := func() {
+		dht22.On(gpio.Error, func(data interface{}) {
+			fmt.Println(data)
+		})
+		dht22.On(tbot.TemperatureUpdated, func(data interface{}) {
+			reading := data.(*sensor.Reading)
+			fmt.Printf("New Reading: T %v*C, H %v%%\n", reading.Temperature, reading.Humidity)
+		})
+
+		button.On(gpio.ButtonPush, func(data interface{}) {
+			fmt.Println("Button: On")
+		})
+		button.On(gpio.ButtonRelease, func(data interface{}) {
+			fmt.Println("Button: Off")
+		})
 	}
 
-	ms := sensor.NewMultiSensor([]sensor.Sensor{&dht1})
+	// start gobot
+	robot := gobot.NewRobot("tempsens bot",
+		[]gobot.Connection{r},
+		[]gobot.Device{dht22, button},
+		work,
+	)
 
-	ms.Start()
-	defer ms.Stop()
-
-	for range time.Tick(2 * time.Second) {
-		reading, err := ms.Read()
-
-		if err != nil {
-			fmt.Println("Read error", err)
-		} else {
-			fmt.Printf("temp: %v, humidity: %v \n", reading.Temperature, reading.Humidity)
-		}
-	}
+	robot.Start()
 
 }
