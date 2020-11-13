@@ -51,7 +51,7 @@ func NewDHT22Driver(c gobot.Connection, pin string) *DHT22Driver {
 		pin:             pin,
 		Eventer:         gobot.NewEventer(),
 		halt:            make(chan bool),
-		readingInterval: 2 * time.Second,
+		readingInterval: 6 * time.Second,
 		// according to the DHT22 datasheet, temperature might be off by 0.5C, Humidity by 2%
 		readingDelta: &sensor.DeltaCap{Temperature: 50, Humidity: 200},
 	}
@@ -103,6 +103,7 @@ func (d *DHT22Driver) Start() (err error) {
 			// read bits from sensor
 			var bits []int
 			if bits, err = d.readBits(); err != nil {
+				d.errors++
 				d.Publish(gpio.Error, err)
 			}
 
@@ -110,6 +111,7 @@ func (d *DHT22Driver) Start() (err error) {
 			var newReading *sensor.Reading
 			if err == nil {
 				if newReading, err = createReadingFromBits(bits); err != nil {
+					d.errors++
 					d.Publish(gpio.Error, err)
 				}
 			}
@@ -117,6 +119,7 @@ func (d *DHT22Driver) Start() (err error) {
 			// emit event if the reading changed
 			if err == nil && !newReading.Equals(d.lastReading, d.readingDelta) {
 				d.lastReading = newReading
+				d.errors = 0
 				d.Publish(TemperatureUpdated, newReading)
 			}
 
@@ -141,9 +144,6 @@ func (d *DHT22Driver) readBits() (bits []int, err error) {
 	var level int
 	levels := make([]int, 0, 84)
 	durations := make([]time.Duration, 0, 84)
-
-	// set lastRead so do not read more than once every 2 seconds
-	d.lastRead = time.Now()
 
 	// disable garbage collection during critical timing part
 	gcPercent := debug.SetGCPercent(-1)
@@ -178,6 +178,9 @@ func (d *DHT22Driver) readBits() (bits []int, err error) {
 		levelPrevious = level
 	}
 
+	// set lastRead so do not read more than once every 2 seconds
+	d.lastRead = time.Now()
+
 	// enable garbage collection, done with critical part
 	debug.SetGCPercent(gcPercent)
 
@@ -207,7 +210,7 @@ func (d *DHT22Driver) readBits() (bits []int, err error) {
 			return nil, fmt.Errorf("missing some readings - level not high")
 		}
 		// high should not be longer then 90 microseconds
-		if durations[i] > 90*time.Microsecond {
+		if durations[i] > 100*time.Microsecond {
 			return nil, fmt.Errorf("missing some readings - high level duration too long: %v", durations[i])
 		}
 		// bit is 0 if less than or equal to 30 microseconds
@@ -225,11 +228,11 @@ func (d *DHT22Driver) readBits() (bits []int, err error) {
 			return nil, fmt.Errorf("missing some readings - level not low")
 		}
 		// low should not be longer then 70 microseconds
-		if durations[i] > 70*time.Microsecond {
+		if durations[i] > 120*time.Microsecond {
 			return nil, fmt.Errorf("missing some readings - low level duration too long: %v", durations[i])
 		}
 		// low should not be shorter then 35 microseconds
-		if durations[i] < 35*time.Microsecond {
+		if durations[i] < 25*time.Microsecond {
 			return nil, fmt.Errorf("missing some readings - low level duration too short: %v", durations[i])
 		}
 	}
