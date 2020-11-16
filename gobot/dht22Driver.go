@@ -13,6 +13,7 @@ import (
 	"runtime/debug"
 	"time"
 
+	"tempsens/data"
 	"tempsens/sensor"
 
 	"gobot.io/x/gobot"
@@ -332,5 +333,5 @@ func createReadingFromBits(bits []int) (reading *sensor.Reading, err error) {
 		err = fmt.Errorf("bad data - check sum fail")
 	}
 
-	return &sensor.Reading{Temperature: float64(temperatureInt) / 10.0, Humidity: float64(humidityInt) / 10.0}, nil
+	return &sensor.Reading{Temperature: data.FromCelsius(float64(temperatureInt) / 10.0), Humidity: float64(humidityInt) / 10.0}, nil
 }

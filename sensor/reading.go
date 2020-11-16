@@ -2,11 +2,12 @@ package sensor
 
 import (
 	"fmt"
+	"tempsens/data"
 )
 
 // Reading ...
 type Reading struct {
-	Temperature float64
+	Temperature data.Temperature
 	Humidity    float64
 }
 
@@ -28,19 +29,18 @@ const (
 
 // Avg ...
 func Avg(readings []Reading) *Reading {
-	var reading = Reading{Temperature: 0., Humidity: 0.}
-	var total float64 = 0.
+	var temperature, humidity, total float64
 	for _, r := range readings {
-		reading.Temperature += r.Temperature
-		reading.Humidity += r.Humidity
+		temperature += r.Temperature.InCelsius()
+		humidity += r.Humidity
 		total++
 	}
 
 	fmt.Printf("Calculated from %v readings\n", total)
 
 	return &Reading{
-		Temperature: reading.Temperature / total,
-		Humidity:    reading.Humidity / total,
+		Temperature: data.FromCelsius(temperature / total),
+		Humidity:    humidity / total,
 	}
 }
 
@@ -53,15 +53,8 @@ func (r *Reading) Equals(other *Reading, cap *DeltaCap) bool {
 		return true
 	}
 
-	deltaTemperature := abs(int(r.Temperature*100) - int(other.Temperature*100))
-	deltaHumidity := abs(int(r.Humidity*100) - int(other.Humidity*100))
+	deltaTemperature := data.Abs(int(r.Temperature*100) - int(other.Temperature*100))
+	deltaHumidity := data.Abs(int(r.Humidity*100) - int(other.Humidity*100))
 
 	return deltaTemperature < cap.Temperature && deltaHumidity < cap.Humidity
-}
-
-func abs(v int) int {
-	if 0 > v {
-		return -v
-	}
-	return v
 }
