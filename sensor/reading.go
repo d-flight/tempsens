@@ -21,12 +21,6 @@ type DeltaCap struct {
 	Humidity    int
 }
 
-const (
-	// according to the datasheet the DHT is accurate up to 0.5 celsius and 2% humidity
-	deltaTemperature = 50
-	deltaHumidity    = 200
-)
-
 // Avg ...
 func Avg(readings []Reading) *Reading {
 	var temperature, humidity, total float64

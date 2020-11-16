@@ -154,7 +154,7 @@ func (d *DHT22Driver) readBits() (bits []int, err error) {
 		d.resetSensor()
 		return nil, fmt.Errorf("pin out low error: %v", err)
 	}
-	time.Sleep(time.Millisecond)
+	time.Sleep(1500 * time.Microsecond)
 
 	// switch to read
 	if levelPrevious, err = d.reader().DigitalRead(d.pin); err != nil {

@@ -1,7 +1,6 @@
 package gobot
 
 import (
-	"fmt"
 	"tempsens/data"
 	"time"
 
@@ -139,15 +138,10 @@ func (l *RgbLedDriver) Toggle() (err error) {
 
 // SetLevel sets the led to the specified color level
 func (l *RgbLedDriver) SetLevel(pin string, level byte) (err error) {
-	if 0xff == level || 0 == level {
-		if writer, ok := l.connection.(gpio.DigitalWriter); ok {
-			return writer.DigitalWrite(pin, level)
-		}
-	}
-
 	if writer, ok := l.connection.(gpio.PwmWriter); ok {
 		return writer.PwmWrite(pin, level)
 	}
+
 	return gpio.ErrPwmWriteUnsupported
 }
 
@@ -157,27 +151,38 @@ func (l *RgbLedDriver) SetColor(c *data.Color) error {
 	l.greenColor = c.Green()
 	l.blueColor = c.Blue()
 
-	return l.On()
+	return l.turnOn()
 }
 
-func (l *RgbLedDriver) Blink(i time.Duration) {
+func (l *RgbLedDriver) Blink(on time.Duration, off time.Duration) {
+	l.cancelBlink()
+
 	l.blink = make(chan bool)
 
 	go func() {
-	Loop:
-		for range time.Tick(i) {
+		wait := time.Duration(0)
+
+		for {
+			startTime := time.Now()
 			if l.State() {
-				l.turnOff()
+				if err := l.turnOff(); err != nil {
+					panic(err)
+				}
+				wait = off
 			} else {
-				l.turnOn()
+				if err := l.turnOn(); err != nil {
+					panic(err)
+				}
+				wait = on
 			}
+
+			time.Sleep(wait - time.Since(startTime))
 
 			select {
 			case <-l.blink:
-				fmt.Println("received halt")
 				close(l.blink)
 				l.blink = nil
-				break Loop
+				return
 			default:
 			}
 		}

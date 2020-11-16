@@ -18,6 +18,10 @@ func (t Temperature) IsValid() bool {
 	return TEMPERATURE_MIN <= t && TEMPERATURE_MAX >= t
 }
 
+func InvalidTemperature() Temperature {
+	return Temperature(TEMPERATURE_MIN - 1)
+}
+
 // FromCelsius ...
 func FromCelsius(celsius float64) Temperature {
 	return Temperature(celsius * 100)

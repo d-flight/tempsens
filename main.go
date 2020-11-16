@@ -1,82 +1,96 @@
 package main
 
 import (
+	"fmt"
+	"os"
+	"os/signal"
 	"tempsens/application"
 	"tempsens/data"
 	tbot "tempsens/gobot"
-	"time"
+	"tempsens/sensor"
 
 	"gobot.io/x/gobot"
+	"gobot.io/x/gobot/drivers/gpio"
 	"gobot.io/x/gobot/platforms/raspi"
+
+	"github.com/brutella/hc"
+	"github.com/brutella/hc/accessory"
+	"github.com/brutella/hc/characteristic"
 )
 
 func main() {
-	booting := true
-
-	// setup a new controller
-	c := application.NewController(&data.HeatingSchedule{
-		// from 6AM until 10PM 22*C
-		6: data.FromCelsius(22),
-		// from 10PM until 6AM 18*C
-		22: data.FromCelsius(18),
-	}, application.STATE_IDLE)
-
 	// setup gobot
-	r := raspi.NewAdaptor()
-	rgb := tbot.NewRgbLedDriver(r, "11", "12", "13")
-	rgb.SetColor(data.Blue())
-	rgb.Blink(1500 * time.Millisecond)
-	// dht22 := tbot.NewDHT22Driver(r, "7")
+	raspi := raspi.NewAdaptor()
+	rgb := tbot.NewRgbLedDriver(raspi, "11", "12", "13")
+	dht22 := tbot.NewDHT22Driver(raspi, "7")
+	relay := gpio.NewRelayDriver(raspi, "8")
 
-	// // setup homekit
-	// info := accessory.Info{Name: "Thermostat"}
-	// // limitations as defined by the DHT22 Datasheet
-	// hcThermostat := accessory.NewThermostat(info, 0., -40., 80., 0.1)
-	// // DHT22 supports humidity, which we also expose to homekit
-	// hcHumidity := characteristic.NewCurrentRelativeHumidity()
-	// hcThermostat.Thermostat.AddCharacteristic(hcHumidity.Characteristic)
+	// setup homekit
+	info := accessory.Info{Name: "Thermostat"}
+	// limitations as defined by the DHT22 Datasheet
+	hcThermostat := accessory.NewThermostat(info, 22, -40., 80., 0.1)
+	// DHT22 supports humidity, which we also expose to homekit
+	hcHumidity := characteristic.NewCurrentRelativeHumidity()
+	hcThermostat.Thermostat.AddCharacteristic(hcHumidity.Characteristic)
 
-	// transportConfig := hc.Config{Pin: "00102003"}
-	// hcTransport, err := hc.NewIPTransport(transportConfig, hcThermostat.Accessory)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	// setup application
+	view := application.NewView(rgb, hcThermostat, hcHumidity)
+	controller := application.NewController(view, application.NewState(), relay)
 
-	// connect them
+	// connect gobot
 	work := func() {
-		// dht22.On(gpio.Error, func(data interface{}) {
-		// 	fmt.Println(data)
-		// })
-		// dht22.On(tbot.TemperatureUpdated, func(data interface{}) {
-		// 	reading := data.(*sensor.Reading)
-		// 	fmt.Printf("New Reading: T %v*C, H %v%%\n", reading.Temperature, reading.Humidity)
+		dht22.On(gpio.Error, func(data interface{}) {
+			fmt.Println(data)
+		})
+		dht22.On(tbot.TemperatureUpdated, func(data interface{}) {
+			reading := data.(*sensor.Reading)
+			fmt.Printf("New Reading: T %v*C, H %v%%\n", reading.Temperature, reading.Humidity)
 
-		// 	// new reading received, update homekit state
-		// 	hcThermostat.Thermostat.CurrentTemperature.SetValue(reading.Temperature)
-		// 	hcHumidity.SetValue(reading.Humidity)
-		// })
+			controller.SetLatestReading(reading)
+		})
 	}
 
-	// start gobot
-	bot := gobot.NewRobot("tempsens bot",
-		[]gobot.Connection{r},
-		[]gobot.Device{},
-		work,
-	)
+	// connect homekit
+	hcThermostat.Thermostat.TargetTemperature.OnValueRemoteUpdate(func(val float64) {
+		controller.SetDesiredTemperature(data.FromCelsius(val), true)
+	})
+	hcThermostat.Thermostat.CurrentHeatingCoolingState.OnValueRemoteUpdate(func(val int) {
+		if characteristic.CurrentHeatingCoolingStateOff == val {
+			controller.SetHeatingState(application.HEATING_STATE_OFF)
+		} else if characteristic.CurrentHeatingCoolingStateHeat == val {
+			controller.SetHeatingState(application.HEATING_STATE_ON)
+		}
+	})
 
-	bot.Start()
+	// start gobot
+	go gobot.NewRobot("tempsens bot",
+		[]gobot.Connection{raspi},
+		[]gobot.Device{rgb, dht22, relay},
+		work,
+	).Start()
 
 	// start homekit
-	// go func() {
-	// 	hcThermostat.Thermostat.TargetTemperature.OnValueRemoteUpdate(func(val float64) {
-	// 		fmt.Printf("Remote update: %v", val)
-	// 	})
-	// }()
+	transportConfig := hc.Config{Pin: "00102003"}
+	hcTransport, err := hc.NewIPTransport(transportConfig, hcThermostat.Accessory)
+	if err != nil {
+		panic(err)
+	}
 
-	// hc.OnTermination(func() {
-	// 	<-hcTransport.Stop()
-	// })
+	hc.OnTermination(func() {
+		<-hcTransport.Stop()
+	})
 
-	// fmt.Println("starting homekit service..")
-	// go hcTransport.Start()
+	fmt.Println("starting homekit service..")
+	go hcTransport.Start()
+
+	// default desired temperature
+	controller.SetDesiredTemperature(data.FromCelsius(23.5), false)
+
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt)
+
+	if sig, ok := <-c; ok {
+		fmt.Printf("Got %s signal. Aborting...\n", sig)
+		os.Exit(1)
+	}
 }
