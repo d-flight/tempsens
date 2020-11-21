@@ -1,0 +1,14 @@
+[Unit]
+Description=Tempsens Application
+Requires=multi-user.target
+After=multi-user.target
+
+[Service]
+WorkingDirectory=/home/pi
+PIDFile=/var/run/tempsens.pid
+ExecStartPre=/bin/rm -f /var/run/tempsens.pid
+ExecStart=/home/pi/tempsens.bin
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

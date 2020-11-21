@@ -29,7 +29,7 @@ func (c *Color) String() string {
 	return fmt.Sprintf("%v|%v|%v", c.Red(), c.Green(), c.Blue())
 }
 
-func Blue() *Color   { return NewColor(0, 0, 0xff) }
-func Orange() *Color { return NewColor(0xff, 0xa5, 0) }
-func Red() *Color    { return NewColor(0xff, 0, 0) }
-func None() *Color   { return NewColor(0, 0, 0) }
+func Blue() *Color  { return NewColor(0, 0, 0xff) }
+func Red() *Color   { return NewColor(0xff, 0, 0) }
+func Green() *Color { return NewColor(0, 0xff, 0) }
+func None() *Color  { return NewColor(0, 0, 0) }

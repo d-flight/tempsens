@@ -1,0 +1,32 @@
+version: '3.4'
+volumes:
+    grafana-data: {}
+    prometheus-data: {}
+
+services:
+    grafana:
+        restart: always
+        container_name: grafana
+        image: grafana/grafana:7.3.3
+        depends_on: 
+            - prometheus
+        ports:
+            - "3000:3000"
+        volumes:
+            - "grafana-data:/var/lib/grafana"
+    
+    prometheus:
+        restart: always
+        container_name: prometheus
+        image: prom/prometheus:v2.22.2
+        ports:
+            - "9090:9090"
+        volumes:
+            - "./prometheus:/etc/prometheus"
+            - "prometheus-data:/prometheus"
+networks:
+  default:
+      ipam:
+          driver: default
+          config:
+              - subnet: 172.28.32.0/24

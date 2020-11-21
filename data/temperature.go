@@ -5,7 +5,7 @@ type Temperature int64
 
 const (
 	TEMPERATURE_MIN = -4000
-	TEMPERATURE_MAX = +8000
+	TEMPERATURE_MAX = +8500
 )
 
 // InCelsius ...

@@ -1,91 +1,106 @@
 package application
 
 import (
+	"tempsens/adapter"
 	"tempsens/data"
-	"tempsens/gobot"
-	"tempsens/sensor"
 	"time"
-
-	"github.com/brutella/hc/accessory"
-	"github.com/brutella/hc/characteristic"
 )
 
 type View struct {
-	statusLed              *gobot.RgbLedDriver
-	thermostat             *accessory.Thermostat
-	humidityCharacteristic *characteristic.CurrentRelativeHumidity
-	booting                bool
+	gobotAdapter   *adapter.Gobot
+	homekitAdapter *adapter.Homekit
+	metricService  *MetricService
+	booting        bool
 }
 
-func NewView(statusLed *gobot.RgbLedDriver, thermostat *accessory.Thermostat, humidityCharacteristic *characteristic.CurrentRelativeHumidity) *View {
-	thermostat.Thermostat.TargetTemperature.Unit = characteristic.UnitCelsius
-	thermostat.Thermostat.CurrentTemperature.Unit = characteristic.UnitCelsius
-
-	booting := true
-
-	v := &View{
-		statusLed,
-		thermostat,
-		humidityCharacteristic,
-		booting,
-	}
+func NewView(
+	gobotAdapter *adapter.Gobot,
+	homekitAdapter *adapter.Homekit,
+) *View {
+	v := &View{gobotAdapter, homekitAdapter, NewMetricService(), true}
 
 	// booting LED blinks blue
-	v.statusLed.SetColor(data.Blue())
-	v.statusLed.Blink(2*time.Second, 2*time.Second)
+	v.gobotAdapter.StatusLed.SetColor(data.Blue())
+	v.gobotAdapter.StatusLed.Blink(2*time.Second, 2*time.Second)
 
 	return v
 }
 
 func (v *View) finishBooting() { v.booting = false }
 
-func (v *View) ViewState(state State) {
+func (v *View) ViewState(state data.State) {
 	if v.booting {
 		return
 	}
 
 	v.ViewHeatingState(state.GetHeatingState())
-	v.ViewDesiredTemperature(state.desiredTemperature)
-	v.ViewLatestReading(state.latestReading)
+	v.ViewDesiredTemperature(state.GetDesiredTemperature())
+	v.ViewLatestReading(state.GetLatestReading())
+	v.ViewUserControlled(state.IsUserControlled())
 }
 
-func (v *View) ViewHeatingState(state int) {
+func (v *View) ViewHeatingState(state data.HeatingState) {
 	switch state {
-	case HEATING_STATE_IDLE:
-		// update LED
-		v.statusLed.SetColor(data.Orange())
-		v.statusLed.On()
+	case data.HEATING_STATE_IDLE:
+		// update relay
+		v.gobotAdapter.HeatingRelay.Off()
 
-		// update HomeKit
-		v.thermostat.Thermostat.CurrentHeatingCoolingState.SetValue(characteristic.CurrentHeatingCoolingStateHeat)
-	case HEATING_STATE_OFF:
 		// update LED
-		v.statusLed.SetColor(data.None())
-		v.statusLed.Off()
+		v.gobotAdapter.StatusLed.SetColor(data.Green())
+		v.gobotAdapter.StatusLed.On()
+	case data.HEATING_STATE_OFF:
+		// update relay
+		v.gobotAdapter.HeatingRelay.Off()
 
-		// update HomeKit
-		v.thermostat.Thermostat.CurrentHeatingCoolingState.SetValue(characteristic.CurrentHeatingCoolingStateOff)
-	case HEATING_STATE_ON:
 		// update LED
-		v.statusLed.SetColor(data.Red())
-		v.statusLed.Blink(5*time.Second, 2*time.Second)
+		v.gobotAdapter.StatusLed.SetColor(data.None())
+		v.gobotAdapter.StatusLed.Off()
+	case data.HEATING_STATE_ON:
+		// update relay
+		v.gobotAdapter.HeatingRelay.On()
 
-		// update HomeKit
-		v.thermostat.Thermostat.CurrentHeatingCoolingState.SetValue(characteristic.CurrentHeatingCoolingStateHeat)
+		// update LED
+		v.gobotAdapter.StatusLed.SetColor(data.Red())
+		v.gobotAdapter.StatusLed.On()
 	}
+
+	// update HomeKit
+	v.homekitAdapter.SetHeatingState(state)
+
+	// update metrics
+	v.metricService.RecordHeatingState(state)
 }
 
 func (v *View) ViewDesiredTemperature(t data.Temperature) {
 	// update HomeKit
-	v.thermostat.Thermostat.TargetTemperature.SetValue(t.InCelsius())
+	v.homekitAdapter.SetDesiredTemperature(t)
+
+	// update metrics
+	v.metricService.RecordDesiredTemperature(t)
 }
 
-func (v *View) ViewLatestReading(reading *sensor.Reading) {
+func (v *View) ViewLatestReading(reading *data.Reading) {
 	if reading == nil {
 		return
 	}
 
 	// update HomeKit
-	v.thermostat.Thermostat.CurrentTemperature.SetValue(reading.Temperature.InCelsius())
-	v.humidityCharacteristic.SetValue(reading.Humidity)
+	v.homekitAdapter.SetLatestReading(reading)
+
+	// update metrics
+	v.metricService.RecordLatestReading(reading)
+}
+
+func (v *View) ViewUserControlled(userControlled bool) (err error) {
+	// update metrics
+	v.metricService.RecordUserControlled(userControlled)
+
+	// update LED
+	if userControlled {
+		err = v.gobotAdapter.UserControlLed.On()
+	} else {
+		err = v.gobotAdapter.UserControlLed.Off()
+	}
+
+	return err
 }
