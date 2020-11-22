@@ -19,6 +19,10 @@ services:
         restart: always
         container_name: prometheus
         image: prom/prometheus:v2.22.2
+        command: >
+            --config.file=/etc/prometheus/prometheus.yml
+            --storage.tsdb.path=/prometheus
+            --storage.tsdb.retention.time=200d
         ports:
             - "9090:9090"
         volumes:

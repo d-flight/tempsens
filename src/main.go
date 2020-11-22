@@ -2,20 +2,17 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"gobot.io/x/gobot/platforms/raspi"
 
 	"tempsens/adapter"
 	"tempsens/application"
 	"tempsens/data"
 
 	"github.com/brutella/hc/accessory"
+	"gobot.io/x/gobot/platforms/raspi"
 )
 
 // configuration for the tempsens application
@@ -26,9 +23,8 @@ const (
 )
 
 func main() {
-	// setup prometheus metrics
-	http.Handle("/metrics", promhttp.Handler())
-	go http.ListenAndServe(":2112", nil)
+	// setup prometheus
+	promAdapter := adapter.NewPrometheusAdapter()
 
 	// setup gobot
 	gobotAdapter := adapter.NewGobotAdapter(
@@ -47,7 +43,7 @@ func main() {
 	)
 
 	// setup application
-	view := application.NewView(gobotAdapter, homekitAdapter)
+	view := application.NewView(gobotAdapter, homekitAdapter, promAdapter)
 	controller := application.NewController(view, data.NewState())
 	schedule := application.NewSchedule(*data.NewHeatingSchedule(
 		&data.Setting{Hour: 6, Temperature: data.FromCelsius(23)},
@@ -68,9 +64,10 @@ func main() {
 	}
 	homekitAdapter.OnHeatingStateChanged = controller.SetHeatingState
 
-	// start homekit, gobot, schedule
+	// start homekit, gobot, prometheus, schedule
 	go homekitAdapter.Boot()
 	go gobotAdapter.Boot()
+	go promAdapter.Start()
 	go schedule.Start()
 
 	c := make(chan os.Signal)

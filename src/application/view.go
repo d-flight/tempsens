@@ -9,15 +9,16 @@ import (
 type View struct {
 	gobotAdapter   *adapter.Gobot
 	homekitAdapter *adapter.Homekit
-	metricService  *MetricService
+	promAdapter    *adapter.PrometheusAdapter
 	booting        bool
 }
 
 func NewView(
 	gobotAdapter *adapter.Gobot,
 	homekitAdapter *adapter.Homekit,
+	prometheusAdapter *adapter.PrometheusAdapter,
 ) *View {
-	v := &View{gobotAdapter, homekitAdapter, NewMetricService(), true}
+	v := &View{gobotAdapter, homekitAdapter, prometheusAdapter, true}
 
 	// booting LED blinks blue
 	v.gobotAdapter.StatusLed.SetColor(data.Blue())
@@ -68,7 +69,7 @@ func (v *View) ViewHeatingState(state data.HeatingState) {
 	v.homekitAdapter.SetHeatingState(state)
 
 	// update metrics
-	v.metricService.RecordHeatingState(state)
+	v.promAdapter.RecordHeatingState(state)
 }
 
 func (v *View) ViewDesiredTemperature(t data.Temperature) {
@@ -76,7 +77,7 @@ func (v *View) ViewDesiredTemperature(t data.Temperature) {
 	v.homekitAdapter.SetDesiredTemperature(t)
 
 	// update metrics
-	v.metricService.RecordDesiredTemperature(t)
+	v.promAdapter.RecordDesiredTemperature(t)
 }
 
 func (v *View) ViewLatestReading(reading *data.Reading) {
@@ -88,12 +89,12 @@ func (v *View) ViewLatestReading(reading *data.Reading) {
 	v.homekitAdapter.SetLatestReading(reading)
 
 	// update metrics
-	v.metricService.RecordLatestReading(reading)
+	v.promAdapter.RecordLatestReading(reading)
 }
 
 func (v *View) ViewUserControlled(userControlled bool) (err error) {
 	// update metrics
-	v.metricService.RecordUserControlled(userControlled)
+	v.promAdapter.RecordUserControlled(userControlled)
 
 	// update LED
 	if userControlled {
