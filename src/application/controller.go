@@ -7,8 +7,8 @@ import (
 // Buffers for temperature, when heating is canceled/triggered
 // In Celsius / 100
 const (
-	upper_temp_buffer = 30
-	lower_temp_buffer = 30
+	upper_temp_buffer = 25
+	lower_temp_buffer = 15
 )
 
 var deltaCap = &data.DeltaCap{Humidity: 200, Temperature: 50}

@@ -46,8 +46,8 @@ func main() {
 	view := application.NewView(gobotAdapter, homekitAdapter, promAdapter)
 	controller := application.NewController(view, data.NewState())
 	schedule := application.NewSchedule(*data.NewHeatingSchedule(
-		&data.Setting{Hour: 6, Temperature: data.FromCelsius(23)},
-		&data.Setting{Hour: 22, Temperature: data.FromCelsius(20)},
+		&data.Setting{Hour: 6, Temperature: data.FromCelsius(22.5)},
+		&data.Setting{Hour: 22, Temperature: data.FromCelsius(21.5)},
 	), controller)
 
 	// connect gobot
