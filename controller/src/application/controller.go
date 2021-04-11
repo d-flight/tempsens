@@ -24,22 +24,13 @@ func NewController(view *View, state *data.State) *Controller {
 	return &Controller{view, state}
 }
 
-func (c *Controller) SetUserControlled(userControlled bool) {
-	c.state.SetUserControlled(userControlled)
-
-	c.updateView()
-}
-
 // SetDesiredTemperature ...
-func (c *Controller) SetDesiredTemperature(t data.Temperature, userControlled bool) {
+func (c *Controller) SetDesiredTemperature(t data.Temperature) {
 	if t == c.state.GetDesiredTemperature() {
 		return
 	}
 
-	// update desired temperature in state if user control allows it
-	if userControlled || !c.state.IsUserControlled() {
-		c.state.SetDesiredTemperature(t)
-	}
+	c.state.SetDesiredTemperature(t)
 
 	// trigger heating state update
 	c.updateHeatingState()

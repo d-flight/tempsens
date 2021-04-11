@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"tempsens/adapter"
 	"tempsens/application"
@@ -45,37 +44,26 @@ func main() {
 	// setup application
 	view := application.NewView(gobotAdapter, homekitAdapter, promAdapter)
 	controller := application.NewController(view, data.NewState())
-	schedule := application.NewSchedule(*data.NewHeatingSchedule(
-		&data.Setting{Hour: 6, Temperature: data.FromCelsius(22.5)},
-		&data.Setting{Hour: 22, Temperature: data.FromCelsius(21.5)},
-	), controller)
 
 	// connect gobot
 	gobotAdapter.OnNewReading = controller.SetLatestReading
-	gobotAdapter.OnScheduleButton = func() {
-		controller.SetUserControlled(false)
-		schedule.Trigger(time.Now())
-	}
 
 	// connect homekit
 	homekitAdapter.OnDesiredTemperatureChanged = func(t data.Temperature) {
-		controller.SetUserControlled(true)
-		controller.SetDesiredTemperature(t, true)
+		controller.SetDesiredTemperature(t)
 	}
 	homekitAdapter.OnHeatingStateChanged = controller.SetHeatingState
 
-	// start homekit, gobot, prometheus, schedule
+	// start homekit, gobot, prometheus
 	go homekitAdapter.Boot()
 	go gobotAdapter.Boot()
 	go promAdapter.Start()
-	go schedule.Start()
 
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, os.Kill, syscall.SIGTERM)
 
 	if sig, ok := <-c; ok {
 		fmt.Printf("Got %s signal. Aborting...\n", sig)
-		schedule.Stop()
 		os.Exit(1)
 	}
 }

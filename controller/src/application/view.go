@@ -37,7 +37,6 @@ func (v *View) ViewState(state data.State) {
 	v.ViewHeatingState(state.GetHeatingState())
 	v.ViewDesiredTemperature(state.GetDesiredTemperature())
 	v.ViewLatestReading(state.GetLatestReading())
-	v.ViewUserControlled(state.IsUserControlled())
 }
 
 func (v *View) ViewHeatingState(state data.HeatingState) {
@@ -90,18 +89,4 @@ func (v *View) ViewLatestReading(reading *data.Reading) {
 
 	// update metrics
 	v.promAdapter.RecordLatestReading(reading)
-}
-
-func (v *View) ViewUserControlled(userControlled bool) (err error) {
-	// update metrics
-	v.promAdapter.RecordUserControlled(userControlled)
-
-	// update LED
-	if userControlled {
-		err = v.gobotAdapter.UserControlLed.On()
-	} else {
-		err = v.gobotAdapter.UserControlLed.Off()
-	}
-
-	return err
 }

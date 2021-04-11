@@ -16,7 +16,6 @@ type PrometheusAdapter struct {
 	actualHumidity     prometheus.Gauge
 	desiredTemperature prometheus.Gauge
 	isHeating          prometheus.Gauge
-	isUserControlled   prometheus.Gauge
 }
 
 func NewPrometheusAdapter() *PrometheusAdapter {
@@ -33,15 +32,11 @@ func NewPrometheusAdapter() *PrometheusAdapter {
 	})
 	desiredTemperature := metricFactory.NewGauge(prometheus.GaugeOpts{
 		Name: "tempsens_desired_temperature",
-		Help: "Temperature desired either by schedule or the user",
+		Help: "Temperature desired either by the user",
 	})
 	isHeating := metricFactory.NewGauge(prometheus.GaugeOpts{
 		Name: "tempsens_is_heating",
 		Help: "Indicator whether the heating is enabled or not",
-	})
-	isUserControlled := metricFactory.NewGauge(prometheus.GaugeOpts{
-		Name: "tempsens_is_user_controlled",
-		Help: "Indicator whether the desired temperature is controlled by the user or the schedule",
 	})
 
 	return &PrometheusAdapter{
@@ -50,7 +45,6 @@ func NewPrometheusAdapter() *PrometheusAdapter {
 		actualHumidity,
 		desiredTemperature,
 		isHeating,
-		isUserControlled,
 	}
 }
 
@@ -78,12 +72,4 @@ func (a *PrometheusAdapter) RecordHeatingState(state data.HeatingState) {
 
 func (a *PrometheusAdapter) RecordDesiredTemperature(temp data.Temperature) {
 	a.desiredTemperature.Set(temp.InCelsius())
-}
-
-func (a *PrometheusAdapter) RecordUserControlled(userControlled bool) {
-	if userControlled {
-		a.isUserControlled.Set(1)
-	} else {
-		a.isUserControlled.Set(0)
-	}
 }
