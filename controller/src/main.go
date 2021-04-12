@@ -11,13 +11,13 @@ import (
 	"tempsens/data"
 
 	"github.com/brutella/hc/accessory"
-	"gobot.io/x/gobot/platforms/raspi"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 // configuration for the tempsens application
 const (
-	homekit_name = "tempsens"
-	homekit_id   = "diy-42069"
+	homekit_name = "tempsens-v2"
+	homekit_id   = "diy-42069-v2"
 	homekit_pin  = "00102003"
 )
 
@@ -25,9 +25,11 @@ func main() {
 	// setup prometheus
 	promAdapter := adapter.NewPrometheusAdapter()
 
-	// setup gobot
-	gobotAdapter := adapter.NewGobotAdapter(
-		raspi.NewAdaptor(), "tempsens",
+	// setup mqtt
+	mqttAdapter := adapter.NewMqttAdapter(
+		mqtt.NewClientOptions().
+			SetClientID("tempsens controller").
+			AddBroker("tcp://localhost:1883"),
 	)
 
 	// setup homekit
@@ -42,11 +44,11 @@ func main() {
 	)
 
 	// setup application
-	view := application.NewView(gobotAdapter, homekitAdapter, promAdapter)
-	controller := application.NewController(view, data.NewState())
+	view := application.NewView(homekitAdapter, promAdapter)
+	controller := application.NewController(view, data.NewState(), mqttAdapter)
 
-	// connect gobot
-	gobotAdapter.OnNewReading = controller.SetLatestReading
+	// connect mqtt
+	mqttAdapter.OnNewReport = controller.HandleNewReport
 
 	// connect homekit
 	homekitAdapter.OnDesiredTemperatureChanged = func(t data.Temperature) {
@@ -54,9 +56,9 @@ func main() {
 	}
 	homekitAdapter.OnHeatingStateChanged = controller.SetHeatingState
 
-	// start homekit, gobot, prometheus
+	// start homekit, mqtt, prometheus
 	go homekitAdapter.Boot()
-	go gobotAdapter.Boot()
+	go mqttAdapter.Boot()
 	go promAdapter.Start()
 
 	c := make(chan os.Signal)

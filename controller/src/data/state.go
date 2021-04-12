@@ -9,7 +9,7 @@ type State struct {
 func NewState() *State {
 	return &State{
 		heatingState:       HEATING_STATE_IDLE,
-		desiredTemperature: InvalidTemperature(),
+		desiredTemperature: Temperature(2350),
 		latestReading:      nil,
 	}
 }

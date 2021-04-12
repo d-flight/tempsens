@@ -11,29 +11,9 @@ import (
 	"gobot.io/x/gobot/drivers/i2c"
 )
 
-// pin configuration
-const (
-	// status rgb
-	pin_status_rgb_red   = "11"
-	pin_status_rgb_green = "12"
-	pin_status_rgb_blue  = "13"
-
-	// heating relay
-	pin_heating_relay = "8"
-
-	// user control led
-	pin_user_control_led = "15"
-)
-
-// i2c address configuration
-const (
-	i2c_bme280_bus     = 1
-	i2c_bme280_address = 0x76
-)
-
 // adapter configuration
 const (
-	reading_polling_rate = 10 * time.Second
+	reading_polling_rate = 1 * time.Minute
 )
 
 type Gobot struct {

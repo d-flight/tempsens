@@ -50,11 +50,11 @@ func (d *Homekit) Boot() {
 	d.thermostat.Thermostat.TargetTemperature.OnValueRemoteUpdate(func(temperature float64) {
 		d.OnDesiredTemperatureChanged(data.FromCelsius(temperature))
 	})
-	d.thermostat.Thermostat.CurrentHeatingCoolingState.OnValueRemoteUpdate(func(state int) {
-		applicationState := data.HEATING_STATE_IDLE
-		if characteristic.CurrentHeatingCoolingStateOff == state {
+	d.thermostat.Thermostat.TargetHeatingCoolingState.OnValueRemoteUpdate(func(state int) {
+		var applicationState data.HeatingState
+		if characteristic.TargetHeatingCoolingStateOff == state {
 			applicationState = data.HEATING_STATE_OFF
-		} else if characteristic.CurrentHeatingCoolingStateHeat == state {
+		} else {
 			applicationState = data.HEATING_STATE_ON
 		}
 

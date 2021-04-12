@@ -1,9 +1,11 @@
 package application
 
 import (
+	"tempsens/adapter"
 	"tempsens/data"
 )
 
+// TODO: Move to slave
 // Buffers for temperature, when heating is canceled/triggered
 // In Celsius / 100
 const (
@@ -11,17 +13,19 @@ const (
 	lower_temp_buffer = 15
 )
 
+// TODO: Move to slave
 var deltaCap = &data.DeltaCap{Humidity: 200, Temperature: 50}
 
 // Controller ...
 type Controller struct {
-	view  *View
-	state *data.State
+	view        *View
+	state       *data.State
+	mqttAdapter *adapter.Mqtt
 }
 
 // NewController ...
-func NewController(view *View, state *data.State) *Controller {
-	return &Controller{view, state}
+func NewController(view *View, state *data.State, mqttAdapter *adapter.Mqtt) *Controller {
+	return &Controller{view, state, mqttAdapter}
 }
 
 // SetDesiredTemperature ...
@@ -32,10 +36,22 @@ func (c *Controller) SetDesiredTemperature(t data.Temperature) {
 
 	c.state.SetDesiredTemperature(t)
 
-	// trigger heating state update
-	c.updateHeatingState()
+	// propagate
+	c.mqttAdapter.SetDesiredTemperature(t)
 
 	// update view
+	c.updateView()
+}
+
+func (c *Controller) HandleNewReport(reading *data.Reading, desired data.Temperature, actualHeatingState data.HeatingState) {
+	// update latest reading
+	c.SetLatestReading(reading)
+
+	// report mismatches state, re-propagate
+	if stateDesired := c.state.GetDesiredTemperature(); stateDesired.IsValid() && stateDesired != desired {
+		c.mqttAdapter.SetDesiredTemperature(stateDesired)
+	}
+
 	c.updateView()
 }
 
@@ -44,10 +60,9 @@ func (c *Controller) SetLatestReading(reading *data.Reading) {
 		return
 	}
 
-	if c.state.GetLatestReading() == nil {
-		// first reading, booting is done
-		c.view.finishBooting()
-	} else if c.state.GetLatestReading().Equals(reading, deltaCap) {
+	latestReading := c.state.GetLatestReading()
+
+	if latestReading != nil && latestReading.Equals(reading, deltaCap) {
 		// if the reading didn't change we exit here
 		return
 	}
@@ -55,13 +70,11 @@ func (c *Controller) SetLatestReading(reading *data.Reading) {
 	// update state
 	c.state.SetLatestReading(reading)
 
-	// update heating state
-	c.updateHeatingState()
-
 	// update view
 	c.updateView()
 }
 
+// TODO: Move to slave
 func (c *Controller) updateHeatingState() {
 	newHeatingState := c.state.GetHeatingState()
 
@@ -96,8 +109,12 @@ func (c *Controller) SetHeatingState(newState data.HeatingState) {
 	// update state
 	c.state.SetHeatingState(newState)
 
-	// apply
-	c.updateHeatingState()
+	// propagate
+	if data.HEATING_STATE_OFF == newState {
+		c.mqttAdapter.ToggleActive(false)
+	} else {
+		c.mqttAdapter.ToggleActive(true)
+	}
 
 	// update view
 	c.updateView()
