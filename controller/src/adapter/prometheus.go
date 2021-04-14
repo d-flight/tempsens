@@ -1,12 +1,12 @@
 package adapter
 
 import (
-	// "net/http"
+	"net/http"
 	"tempsens/data"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	// "github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type PrometheusAdapter struct {
@@ -49,15 +49,12 @@ func NewPrometheusAdapter() *PrometheusAdapter {
 }
 
 func (a *PrometheusAdapter) Start() error {
-	// // application metrics
-	// http.Handle("/metrics/app", promhttp.HandlerFor(a.registry, promhttp.HandlerOpts{}))
-	// // process metrics
-	// http.Handle("/metrics/process", promhttp.Handler())
+	// application metrics
+	http.Handle("/metrics/app", promhttp.HandlerFor(a.registry, promhttp.HandlerOpts{}))
+	// process metrics
+	http.Handle("/metrics/process", promhttp.Handler())
 
-	// return http.ListenAndServe(":2112", nil)
-
-	// disabled for testing
-	return nil
+	return http.ListenAndServe(":2112", nil)
 }
 
 func (a *PrometheusAdapter) RecordLatestReading(reading *data.Reading) {

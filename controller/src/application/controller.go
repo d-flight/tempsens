@@ -5,15 +5,6 @@ import (
 	"tempsens/data"
 )
 
-// TODO: Move to slave
-// Buffers for temperature, when heating is canceled/triggered
-// In Celsius / 100
-const (
-	upper_temp_buffer = 25
-	lower_temp_buffer = 15
-)
-
-// TODO: Move to slave
 var deltaCap = &data.DeltaCap{Humidity: 200, Temperature: 50}
 
 // Controller ...
@@ -48,8 +39,18 @@ func (c *Controller) HandleNewReport(reading *data.Reading, desired data.Tempera
 	c.SetLatestReading(reading)
 
 	// report mismatches state, re-propagate
-	if stateDesired := c.state.GetDesiredTemperature(); stateDesired.IsValid() && stateDesired != desired {
-		c.mqttAdapter.SetDesiredTemperature(stateDesired)
+	stateHeatingState := c.state.GetHeatingState()
+	if actualHeatingState != stateHeatingState {
+		if data.HEATING_STATE_OFF == stateHeatingState { // should be off
+			c.mqttAdapter.ToggleActive(false)
+		} else { // state needs an update
+			c.state.SetHeatingState(actualHeatingState)
+		}
+	} else {
+		temperatureDesired := c.state.GetDesiredTemperature()
+		if temperatureDesired.IsValid() && temperatureDesired != desired {
+			c.mqttAdapter.SetDesiredTemperature(temperatureDesired)
+		}
 	}
 
 	c.updateView()
@@ -72,37 +73,6 @@ func (c *Controller) SetLatestReading(reading *data.Reading) {
 
 	// update view
 	c.updateView()
-}
-
-// TODO: Move to slave
-func (c *Controller) updateHeatingState() {
-	newHeatingState := c.state.GetHeatingState()
-
-	if data.HEATING_STATE_OFF != newHeatingState {
-		lastReading := c.state.GetLatestReading()
-		desiredTemperature := c.state.GetDesiredTemperature()
-
-		if nil == lastReading || lastReading.Temperature == desiredTemperature {
-			return
-		}
-
-		// save old heating state and calculate new one
-		actualTemperature := lastReading.Temperature
-		newHeatingState = c.state.GetHeatingState()
-
-		// if we reached a tempearture that is higher than the desiredTemperature, switch to idle
-		if upper_temp_buffer < actualTemperature-desiredTemperature {
-			newHeatingState = data.HEATING_STATE_IDLE
-		}
-
-		// if we reached a temperature that is lower than the desiredTemperature, switch to heating
-		if lower_temp_buffer < desiredTemperature-actualTemperature {
-			newHeatingState = data.HEATING_STATE_ON
-		}
-	}
-
-	// update state
-	c.state.SetHeatingState(newHeatingState)
 }
 
 func (c *Controller) SetHeatingState(newState data.HeatingState) {
