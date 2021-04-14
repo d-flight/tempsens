@@ -32,7 +32,7 @@ func NewPrometheusAdapter() *PrometheusAdapter {
 	})
 	desiredTemperature := metricFactory.NewGauge(prometheus.GaugeOpts{
 		Name: "tempsens_desired_temperature",
-		Help: "Temperature desired either by the user",
+		Help: "Temperature desired by the user",
 	})
 	isHeating := metricFactory.NewGauge(prometheus.GaugeOpts{
 		Name: "tempsens_is_heating",

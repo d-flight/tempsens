@@ -37,6 +37,9 @@ func DeserializeReportMessage(rawMessage []byte) (*ReportMessage, error) {
 		return nil, fmt.Errorf("error with unmarshal: %v", e)
 	}
 
+	// avoid floats over json
+	message.Reading.Humidity = message.Reading.Humidity / 100
+
 	return &message, nil
 }
 

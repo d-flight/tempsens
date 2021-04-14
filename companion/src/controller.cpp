@@ -79,7 +79,7 @@ void Controller::updateStatusLed() {
             this->led->display(0, 0, 0xff);
             break;
         case data::HeatingState::heating:
-            this->led->display(0xff, 0xff, 0);
+            this->led->display(0xff, 0xa5, 0);
             break;
     }
 };

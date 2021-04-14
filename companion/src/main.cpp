@@ -15,9 +15,6 @@ Controller* controller;
 Application* app;
 
 void setup() {
-    // TODO: REMOVE
-    Serial.begin(115200);
-
     // setup pins
     auto gpioConfig = new config::Gpio(
         TEMPSENS_PIN_RGB_R,

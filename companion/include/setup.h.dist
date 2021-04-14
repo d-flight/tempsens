@@ -1,4 +1,3 @@
-
 // GPIO
 #define TEMPSENS_PIN_RGB_R 12
 #define TEMPSENS_PIN_RGB_G 15
