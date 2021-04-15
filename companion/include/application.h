@@ -15,6 +15,7 @@ namespace tempsens {
         config::I2C* i2cConfig;
         PubSubClient* mqttClient;
         drivers::RgbLed* statusLed;
+        Controller* controller;
 
         void setupMqtt(const config::Mqtt& mqttConfig);
         void setupWifi();
@@ -29,7 +30,7 @@ namespace tempsens {
 
         Controller* boot();
 
-        void reconnect();
+        void connect(bool reconnect);
     };
 
 }

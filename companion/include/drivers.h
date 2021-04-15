@@ -60,6 +60,8 @@ namespace tempsens { namespace drivers {
         public:
             Mqtt(PubSubClient* mqttClient);
 
+            void listen();
+            void loop();
             bool report(data::Reading reading, int desiredTemperature, data::HeatingState heatingState);
             void onChangeDesiredTemperatureMessage(std::function<void (short)> callback);
             void onToggleActiveMessage(std::function<void (bool toggle)> callback);

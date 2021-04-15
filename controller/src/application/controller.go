@@ -36,7 +36,7 @@ func (c *Controller) SetDesiredTemperature(t data.Temperature) {
 
 func (c *Controller) HandleNewReport(reading *data.Reading, desired data.Temperature, actualHeatingState data.HeatingState) {
 	// update latest reading
-	c.SetLatestReading(reading)
+	c.setLatestReading(reading)
 
 	// report mismatches state, re-propagate
 	stateHeatingState := c.state.GetHeatingState()
@@ -56,7 +56,7 @@ func (c *Controller) HandleNewReport(reading *data.Reading, desired data.Tempera
 	c.updateView()
 }
 
-func (c *Controller) SetLatestReading(reading *data.Reading) {
+func (c *Controller) setLatestReading(reading *data.Reading) {
 	if reading == nil {
 		return
 	}
@@ -70,9 +70,6 @@ func (c *Controller) SetLatestReading(reading *data.Reading) {
 
 	// update state
 	c.state.SetLatestReading(reading)
-
-	// update view
-	c.updateView()
 }
 
 func (c *Controller) SetHeatingState(newState data.HeatingState) {

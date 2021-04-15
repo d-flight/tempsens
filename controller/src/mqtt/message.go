@@ -9,9 +9,9 @@ import (
 )
 
 type ReportMessage struct {
-	Desired data.Temperature
-	Reading data.Reading
-	State   data.HeatingState
+	Desired      data.Temperature
+	Reading      data.Reading
+	HeatingState data.HeatingState
 }
 
 func (m ReportMessage) Validate() (errs []error) {

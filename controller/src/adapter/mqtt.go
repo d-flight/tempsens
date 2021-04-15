@@ -95,7 +95,7 @@ func (m *Mqtt) onReportMessage(client mqtt_.Client, msg mqtt_.Message) {
 
 	fmt.Printf("Recieved new report message: %v\n", report)
 
-	m.OnNewReport(&report.Reading, report.Desired, report.State)
+	m.OnNewReport(&report.Reading, report.Desired, report.HeatingState)
 }
 
 func wait(t mqtt_.Token) (e error) {

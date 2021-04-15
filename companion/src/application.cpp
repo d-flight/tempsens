@@ -7,30 +7,50 @@
 
 using namespace tempsens;
 
-void Application::reconnect() {
-    // fixing lost wifi connection
-    while (WiFi.status() != WL_CONNECTED) {
-        this->statusLed->blink(0x0, 0x0, 0xff);
-        Serial.println("connecting to wifi..");
+const uint8_t CONNECTION_ATTEMPTS_WIFI = 5;
+const uint8_t CONNECTION_ATTEMPTS_MQTT = 5;
+
+void Application::connect(bool reconnect) {
+    // connect wifi
+    if (WL_CONNECTED != WiFi.status()) {
+        uint8_t wifiRetries = 0;
+        do {
+            this->statusLed->blink(0x0, 0x0, 0xff);
+            Serial.println("connecting to wifi..");
+        } while (WL_CONNECTED != WiFi.status() && ++wifiRetries < CONNECTION_ATTEMPTS_WIFI);
     }
-
-    Serial.println("wifi connected.");
-
-    // fixing lost mqtt connection
-    while (!this->mqttClient->connected()) {
-        Serial.println("Connecting to MQTT...");
-        this->statusLed->blink(0xff, 0x0, 0x0);
-
     
-        if (!this->mqttClient->connect(this->wifiConfig->hostname.c_str())) {
-            Serial.print("failed with state ");
-            Serial.print(this->mqttClient->state());
+    if (WL_CONNECTED == WiFi.status()) {
+        Serial.println("wifi connected.");
+    } else {
+        Serial.printf("Couldn't connect to wifi after %d attempts.\n", CONNECTION_ATTEMPTS_WIFI);
+        return; // don't try mqtt if wifi doesn't work
+    }
+    
+    // connect mqtt
+    if (!this->mqttClient->connected()) {
+        uint8_t mqttRetries = 0;
+        do {
+            Serial.println("Connecting to MQTT...");
+            this->statusLed->blink(0xff, 0x0, 0x0);
+
+        
+            if (!this->mqttClient->connect(this->wifiConfig->hostname.c_str())) {
+                Serial.print("failed with state ");
+                Serial.print(this->mqttClient->state());
+            }
+        } while (!this->mqttClient->connected() && ++mqttRetries < CONNECTION_ATTEMPTS_MQTT);
+
+        if (this->mqttClient->connected()) {
+            Serial.println("mqtt connected.");
+            if (true == reconnect) {
+                this->controller->onReconnect();
+            }
+
+        } else {
+            Serial.printf("Couldn't connect to wifi after %d attempts.\n", CONNECTION_ATTEMPTS_MQTT);
         }
     }
-
-    this->mqttClient->loop();
-
-    Serial.println("mqtt connected");
 };
 
 void Application::setupWifi() {
@@ -44,15 +64,17 @@ Controller* Application::boot() {
     this->setupWifi();
 
     // and try to connect
-    this->reconnect();
+    this->connect(false);
 
     // setup the controller with the rest of the drivers
-    return new Controller(
+    this->controller = new Controller(
         new drivers::Mqtt(this->mqttClient),
         new drivers::Bme280(this->i2cConfig->bme280Address, this->gpioConfig->pinI2cData, this->gpioConfig->pinI2cClock),
         new drivers::Relay(this->gpioConfig->pinRelay),
         this->statusLed
     );
+
+    return this->controller;
 };
 
 void Application::setupMqtt(const config::Mqtt& mqttConfig) {

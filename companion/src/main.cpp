@@ -42,7 +42,7 @@ void setup() {
 }
 
 void loop() {
-    app->reconnect();
+    app->connect(true);
 
     controller->tick();
 

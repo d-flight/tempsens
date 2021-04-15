@@ -12,8 +12,8 @@ namespace tempsens { namespace data {
 
     enum HeatingState { 
         off = 0,
-        idle = 1,
-        heating =2 
+        heating = 1,
+        idle = 2
     };
 
 

@@ -26,6 +26,7 @@ namespace tempsens {
             Controller(drivers::Mqtt* mqtt, drivers::Bme280* bme, drivers::Relay* relay, drivers::RgbLed* led);
 
             void tick();
+            void onReconnect();
     };
 
 

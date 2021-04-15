@@ -48,6 +48,9 @@ void Controller::updateHeatingState(data::Reading reading) {
 };
 
 void Controller::tick() {
+    // process queued messages
+    this->mqtt->loop();
+
     // fetch the latest reading
     data::Reading reading = this->bme->getLatestReading();
 
@@ -82,4 +85,8 @@ void Controller::updateStatusLed() {
             this->led->display(0xff, 0xa5, 0);
             break;
     }
+};
+
+void Controller::onReconnect() {
+    this->mqtt->listen();
 };

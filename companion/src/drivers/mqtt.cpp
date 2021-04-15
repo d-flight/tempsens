@@ -57,8 +57,7 @@ Mqtt::Mqtt(PubSubClient* mqttClient) : mqttClient(mqttClient) {
         Serial.println("Received mqtt message");
     });
 
-    auto subscribed = this->mqttClient->subscribe(TEMPSENS_MQTT_TOPIC_CONTROL, 1); // at least once
-    Serial.printf("subscribed: %s\n", (subscribed ? "yes" : "no"));
+    this->listen();
 };
 
 bool Mqtt::report(data::Reading reading, int desiredTemperature, data::HeatingState heatingState) {
@@ -91,4 +90,13 @@ void Mqtt::onChangeDesiredTemperatureMessage(std::function<void (signed short)> 
 
 void Mqtt::onToggleActiveMessage(std::function<void (bool toggle)> callback) {
     this->toggleActiveMessageHandler = callback;
+};
+
+void Mqtt::loop() {
+    this->mqttClient->loop();
+};
+
+void Mqtt::listen() {
+    auto subscribed = this->mqttClient->subscribe(TEMPSENS_MQTT_TOPIC_CONTROL, 1); // at least once
+    Serial.printf("subscribed: %s\n", (subscribed ? "yes" : "no"));
 };
